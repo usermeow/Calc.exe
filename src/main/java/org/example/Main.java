@@ -3,158 +3,162 @@ package org.example;
 import java.util.Scanner;
 
 public class Main {
+    private static final Scanner scanner = new Scanner(System.in);
+
     public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
-
-        while (true) {
-            double[] numbers = new double[2];
-            String[] inputs = new String[2];
-
-            inputs[0] = readCleanInput(scanner, "Введите число 1: ");
-            inputs[1] = readCleanInput(scanner, "Введите число 2: ");
-
-            numbers[0] = Double.parseDouble(inputs[0].replace(',', '.'));
-            numbers[1] = Double.parseDouble(inputs[1].replace(',', '.'));
-
-            int precision1 = getDecimalPlaces(inputs[0]);
-            int precision2 = getDecimalPlaces(inputs[1]);
-
-            System.out.print("Выберите операцию (+, -, *, /): ");
-            char operation = scanner.next().charAt(0);
-            scanner.nextLine(); // очистка буфера
-
-            Double result = null;
-            int outputPrecision = 0;
-
-            switch (operation) {
-                case '+':
-                    result = numbers[0] + numbers[1];
-                    outputPrecision = Math.max(precision1, precision2);
-                    break;
-
-                case '-':
-                    result = numbers[0] - numbers[1];
-                    outputPrecision = Math.max(precision1, precision2);
-                    break;
-
-                case '*':
-                    result = numbers[0] * numbers[1];
-                    outputPrecision = askManualPrecision(scanner, precision1 + precision2);
-                    break;
-
-                case '/':
-                    if (numbers[1] == 0) {
-                        System.out.println("Ошибка: деление на ноль!");
-                    } else {
-                        result = numbers[0] / numbers[1];
-                        outputPrecision = askManualPrecision(scanner, precision1 + precision2 + 2);
-                    }
-                    break;
-
-                default:
-                    System.out.println("Неизвестная операция!");
-                    break;
-            }
-
-            if (result != null) {
-                String format = "%." + outputPrecision + "f%n";
-                System.out.printf("Результат: " + format, result);
-            }
-
-            System.out.print("Хотите продолжить? (y/n): ");
-            String answer = scanner.nextLine().trim().toLowerCase();
-
-            if (answer.equals("n")) {
-                System.out.println("Программа завершена.");
-                break;
-            }
-
-            System.out.println();
-        }
-
+        runCalculator();
         scanner.close();
     }
 
-    // ✅ Чтение и очистка пользовательского ввода
-    private static String readCleanInput(Scanner scanner, String message) {
+    // 🧮 Главный метод: управляет всем процессом
+    private static void runCalculator() {
+        System.out.println("=== Калькулятор v2.0 ===");
+
         while (true) {
-            System.out.print(message);
-            String input = scanner.nextLine().trim();
+            double number1 = readNumber("Введите число 1: ");
+            double number2 = readNumber("Введите число 2: ");
+            char operation = readOperation();
 
-            String cleaned = input.replaceAll("[^0-9.,-]", "");
-            cleaned = fixMultipleDots(cleaned);
-            cleaned = cleaned.replace(',', '.');
-
-            if (cleaned.isEmpty() || cleaned.equals("-") || cleaned.equals(".")) {
-                System.out.println("Введите корректное число!");
-                continue;
+            Double result = calculate(number1, number2, operation);
+            if (result != null) {
+                printResult(number1, number2, operation, result);
             }
+
+            if (!askContinue()) {
+                System.out.println("Программа завершена.");
+                break;
+            }
+            System.out.println();
+        }
+    }
+
+    // 🔢 Чтение и очистка числа
+    private static double readNumber(String prompt) {
+        while (true) {
+            System.out.print(prompt);
+            String input = scanner.nextLine().trim();
+            String cleaned = cleanInput(input);
 
             try {
-                Double.parseDouble(cleaned);
+                double value = Double.parseDouble(cleaned.replace(',', '.'));
                 if (!cleaned.equals(input)) {
-                    System.out.println("⚠️ Введено с опечатками, использую число: " + cleaned);
+                    System.out.println("⚠️ Исправлено на: " + cleaned);
                 }
-                return cleaned;
+                return value;
             } catch (NumberFormatException e) {
-                System.out.println("Ошибка: невозможно распознать число. Попробуйте снова.");
+                System.out.println("Ошибка: введите корректное число!");
             }
         }
     }
 
-    // ✅ Исправляем ввод, если много точек/запятых
+    // 🧹 Очистка строки от мусора и двойных точек
+    private static String cleanInput(String input) {
+        String cleaned = input.replaceAll("[^0-9.,-]", "");
+        cleaned = fixMultipleDots(cleaned);
+        cleaned = cleaned.replace(',', '.');
+        return cleaned;
+    }
+
+    // ⚙️ Исправление множественных разделителей
     private static String fixMultipleDots(String input) {
         int firstDot = input.indexOf('.');
-        int firstComma = input.indexOf(',');
+        if (firstDot == -1) return input;
+        String before = input.substring(0, firstDot + 1);
+        String after = input.substring(firstDot + 1).replaceAll("[.,]", "");
+        return before + after;
+    }
 
-        int firstSeparator = -1;
-        if (firstDot != -1 && firstComma != -1)
-            firstSeparator = Math.min(firstDot, firstComma);
-        else if (firstDot != -1)
-            firstSeparator = firstDot;
-        else if (firstComma != -1)
-            firstSeparator = firstComma;
+    // ➕ Чтение операции
+    private static char readOperation() {
+        while (true) {
+            System.out.print("Выберите операцию (+, -, *, /): ");
+            String input = scanner.nextLine().trim();
+            if (input.length() == 1 && "+-*/".contains(input)) {
+                return input.charAt(0);
+            }
+            System.out.println("Ошибка: введите один из символов (+, -, *, /)");
+        }
+    }
 
-        if (firstSeparator != -1) {
-            String before = input.substring(0, firstSeparator + 1);
-            String after = input.substring(firstSeparator + 1).replaceAll("[.,]", "");
-            return before + after;
+    // 🧠 Основная логика вычисления
+    private static Double calculate(double num1, double num2, char op) {
+        int precision1 = getDecimalPlaces(num1);
+        int precision2 = getDecimalPlaces(num2);
+        Double result = null;
+        int outputPrecision;
+
+        switch (op) {
+            case '+':
+                result = num1 + num2;
+                outputPrecision = Math.max(precision1, precision2);
+                break;
+            case '-':
+                result = num1 - num2;
+                outputPrecision = Math.max(precision1, precision2);
+                break;
+            case '*':
+                result = num1 * num2;
+                outputPrecision = askManualPrecision(precision1 + precision2);
+                break;
+            case '/':
+                if (num2 == 0) {
+                    System.out.println("Ошибка: деление на ноль!");
+                    return null;
+                }
+                result = num1 / num2;
+                outputPrecision = askManualPrecision(precision1 + precision2 + 2);
+                break;
+            default:
+                System.out.println("Неизвестная операция.");
+                return null;
         }
 
-        return input;
+        printFormattedResult(result, outputPrecision);
+        return result;
     }
 
-    // ✅ Подсчёт количества цифр после запятой
-    private static int getDecimalPlaces(String number) {
-        number = number.replace(',', '.');
-        int index = number.indexOf('.');
+    // 🎯 Подсчёт количества знаков после запятой (через строку)
+    private static int getDecimalPlaces(double number) {
+        String text = String.valueOf(number);
+        int index = text.indexOf('.');
         if (index == -1) return 0;
-        return number.length() - index - 1;
+        return text.length() - index - 1;
     }
 
-    // ✅ Ввод точности вручную (только для * и /)
-    private static int askManualPrecision(Scanner scanner, int defaultPrecision) {
+    // 🧩 Запрос пользовательской точности
+    private static int askManualPrecision(int defaultPrecision) {
         System.out.print("Введите количество знаков после запятой (Enter — авто): ");
         String input = scanner.nextLine().trim();
 
-        if (input.isEmpty()) {
-            return Math.min(defaultPrecision, 8); // авто-режим
-        }
+        if (input.isEmpty()) return Math.min(defaultPrecision, 8);
 
         try {
             int precision = Integer.parseInt(input);
-            if (precision < 0) {
-                System.out.println("⚠️ Точность не может быть отрицательной. Использую авто.");
-                return Math.min(defaultPrecision, 8);
-            }
-            if (precision > 12) {
-                System.out.println("⚠️ Слишком большое число, ограничено 12 знаками.");
-                return 12;
-            }
-            return precision;
+            if (precision < 0) return Math.min(defaultPrecision, 8);
+            return Math.min(precision, 12);
         } catch (NumberFormatException e) {
             System.out.println("⚠️ Некорректный ввод, использую авто.");
             return Math.min(defaultPrecision, 8);
         }
+    }
+
+    // 🖨️ Форматированный вывод результата
+    private static void printFormattedResult(Double result, int precision) {
+        String format = "%." + precision + "f%n";
+        System.out.printf("Результат: " + format, result);
+    }
+
+    // 💬 Вывод краткой информации об операции
+    private static void printResult(double n1, double n2, char op, double res) {
+        System.out.println("----------------------------");
+        System.out.printf("Операция: %.6f %c %.6f = %.6f%n", n1, op, n2, res);
+        System.out.println("----------------------------");
+    }
+
+    // 🔁 Продолжить?
+    private static boolean askContinue() {
+        System.out.print("Хотите продолжить? (y/n): ");
+        String input = scanner.nextLine().trim().toLowerCase();
+        return input.equals("y") || input.equals("д");
     }
 }
