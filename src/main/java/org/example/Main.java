@@ -3,86 +3,69 @@ package org.example;
 import java.util.Scanner;
 
 public class Main {
-
-    private static final Scanner scanner = new Scanner(System.in);
-    private static final Calculator calculator = new Calculator();
-
     public static void main(String[] args) {
-        runCalculator();
-        scanner.close();
-    }
+        Scanner scanner = new Scanner(System.in);
+        // Создаем наши объекты-помощники
+        Calculator calculator = new Calculator();
+        InputUtils inputUtils = new InputUtils(scanner);
 
-    private static void runCalculator() {
-        System.out.println("=== Калькулятор ===");
+        System.out.println("=== Добро пожаловать в Калькулятор ===");
 
         while (true) {
-            double number1 = readNumber("Введите число 1: ");
-            double number2 = readNumber("Введите число 2: ");
-            char operation = readOperation();
+            // 1. Получение данных
+            String strNum1 = inputUtils.readCleanInput("Введите число 1: ");
+            String strNum2 = inputUtils.readCleanInput("Введите число 2: ");
 
-            int precision1 = calculator.getDecimalPlaces(number1);
-            int precision2 = calculator.getDecimalPlaces(number2);
+            double num1 = Double.parseDouble(strNum1);
+            double num2 = Double.parseDouble(strNum2);
 
-            int manualPrecision = 0;
-            if (operation == '*' || operation == '/') {
-                manualPrecision = askManualPrecision();
+            int prec1 = inputUtils.getDecimalPlaces(strNum1);
+            int prec2 = inputUtils.getDecimalPlaces(strNum2);
+
+            // 2. Выбор операции
+            char operation = inputUtils.getOperation();
+
+            // 3. Вычисление и определение формата
+            Double result = null;
+            int finalPrecision = 0;
+
+            try {
+                switch (operation) {
+                    case '+':
+                        result = calculator.add(num1, num2);
+                        finalPrecision = Math.max(prec1, prec2);
+                        break;
+                    case '-':
+                        result = calculator.subtract(num1, num2);
+                        finalPrecision = Math.max(prec1, prec2);
+                        break;
+                    case '*':
+                        result = calculator.multiply(num1, num2);
+                        finalPrecision = inputUtils.askManualPrecision(prec1 + prec2);
+                        break;
+                    case '/':
+                        result = calculator.divide(num1, num2);
+                        finalPrecision = inputUtils.askManualPrecision(prec1 + prec2 + 2);
+                        break;
+                    default:
+                        System.out.println("❌ Неизвестная операция!");
+                }
+            } catch (ArithmeticException e) {
+                System.out.println("Ошибка: " + e.getMessage());
             }
 
-            Double result = calculator.calculate(number1, number2, operation, precision1, precision2, manualPrecision);
-
-            if (result == null) {
-                System.out.println("Ошибка: деление на ноль!");
-            } else {
-                System.out.println("Результат: " + result);
+            // 4. Вывод результата
+            if (result != null) {
+                String format = "%." + finalPrecision + "f%n";
+                System.out.printf("Результат: " + format, result);
             }
 
-            if (!askContinue()) {
-                System.out.println("Выход из программы.");
+            // 5. Проверка на выход
+            if (!inputUtils.askToContinue()) {
+                System.out.println("Программа завершена.");
                 break;
             }
-            System.out.println();
         }
-    }
-
-    // Методы ввода и утилиты (берём из твоего старого кода)
-    private static double readNumber(String prompt) {
-        while (true) {
-            System.out.print(prompt);
-            String input = scanner.nextLine().trim();
-            String cleaned = input.replaceAll("[^0-9.,-]", "").replace(',', '.');
-            try {
-                return Double.parseDouble(cleaned);
-            } catch (NumberFormatException e) {
-                System.out.println("Ошибка: введите корректное число!");
-            }
-        }
-    }
-
-    private static char readOperation() {
-        while (true) {
-            System.out.print("Выберите операцию (+, -, *, /): ");
-            String input = scanner.nextLine().trim();
-            if (input.length() == 1 && "+-*/".contains(input)) {
-                return input.charAt(0);
-            }
-            System.out.println("Ошибка: введите один из символов (+, -, *, /)");
-        }
-    }
-
-    private static int askManualPrecision() {
-        System.out.print("Введите количество знаков после запятой (Enter — авто): ");
-        String input = scanner.nextLine().trim();
-        if (input.isEmpty()) return 0;
-        try {
-            return Math.max(0, Integer.parseInt(input));
-        } catch (NumberFormatException e) {
-            return 0;
-        }
-    }
-
-    private static boolean askContinue() {
-        System.out.print("Продолжить? (y/n): ");
-        String input = scanner.nextLine().trim().toLowerCase();
-        return input.equals("y") || input.equals("д");
+        scanner.close();
     }
 }
