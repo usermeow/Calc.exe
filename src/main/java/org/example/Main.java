@@ -28,7 +28,6 @@ public class Main {
             // 3. Вычисление и определение формата
             Double result = null;
             int finalPrecision = 0;
-
             try {
                 switch (operation) {
                     case '+':
