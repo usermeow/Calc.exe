@@ -1,0 +1,52 @@
+name: Kotlin Calculator CI/CD
+
+# Запуск при пуше или Pull Request'е в ветку main
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest # Используем стандартный раннер
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 22
+        # Устанавливаем самую свежую версию JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '22' # Указываем нужную версию
+          distribution: 'temurin'
+          # Используем cache: 'gradle' для Kotlin DSL проектов
+          cache: 'gradle'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      # 1. CI: Сборка, Тестирование (JUnit) и Генерация данных Allure
+      # Для kts-файлов команда остается той же
+      - name: Run Tests and Generate Allure Data
+        run: ./gradlew clean test allureReport
+
+      # 2. CD: Создание исполняемого JAR
+      # Требуется, чтобы в build.gradle.kts был применен плагин application
+      - name: Create Runnable JAR
+        run: ./gradlew jar
+
+      # 3. Сохранение артефактов
+      - name: Upload Calculator JAR Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: calculator-jar
+          path: build/libs/*.jar
+
+      - name: Upload Allure Test Results
+        # Сохраняем данные. Для просмотра полного отчета их нужно будет скачать и запустить локально
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-data
+          path: build/allure-results

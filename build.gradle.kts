@@ -17,3 +17,9 @@ tasks.test {
 allure {
     version = "2.25.0"
 }
+
+tasks.jar {
+    manifest {
+        attributes["Main-Class"] = "org.example.Main"
+    }
+}
